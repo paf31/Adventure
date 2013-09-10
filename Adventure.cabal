@@ -1,0 +1,22 @@
+name: Adventure
+version: 0.0.1
+cabal-version: >=1.2
+build-type: Simple
+license: BSD3
+license-file: ""
+copyright: (c) Phil Freeman, Jeff Polakow 2013
+stability: experimental
+synopsis: Text Based Adventure Game Engine
+description: A sample library for the Los Angeles Haskell User Group
+author: Phil Freeman, Jeff Polakow
+data-dir: ""
+ 
+executable Adventure
+    build-depends: mtl -any, split -any, containers -any,
+                   haskeline -any, base -any
+    main-is: Main.hs
+    buildable: True
+    hs-source-dirs: src
+    other-modules: Game.Adventure.Actions Game.Adventure.State
+                   Game.Adventure.Parser Game.Adventure.Command Game.Adventure
+ 
