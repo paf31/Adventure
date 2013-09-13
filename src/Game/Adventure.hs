@@ -24,8 +24,6 @@ module Game.Adventure (
 
   Script,
 
-  MonadText,
-
   singlePlayer
 
 ) where

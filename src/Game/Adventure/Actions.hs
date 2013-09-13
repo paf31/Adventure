@@ -65,10 +65,10 @@ without player item action = do
     action
 
 addToInventory :: (S.MonadState (GameState player item) m, Ord player, Eq item, Show item) => player -> item -> m ()
-addToInventory player item = S.modify $ modifyInventories $ M.update (Just . (:) item) player
+addToInventory player item = S.modify $ modifyInventories $ M.alter (maybe (Just [item]) (Just . (:) item)) player
 
 removeFromInventory :: (S.MonadState (GameState player item) m, Ord player, Eq item, Show item) => player -> item -> m ()
-removeFromInventory player item = S.modify $ modifyInventories $ M.update (Just . delete item) player
+removeFromInventory player item = S.modify $ modifyInventories $ M.adjust (delete item) player
 
 pickUp :: (MonadText m, S.MonadState (GameState player item) m, Ord player, Eq item, Ord item, Show item) => player -> item -> m ()
 pickUp player item = do
@@ -100,7 +100,7 @@ moveTo :: (S.MonadState (GameState player item) m, Ord player) => player -> Loca
 moveTo player location = S.modify $ modifyPlayerLocations $ M.insert player location
 
 moveInDirection :: (S.MonadState (GameState player item) m, Ord player) => player -> Direction -> m ()
-moveInDirection player direction = S.modify $ modifyPlayerLocations $ M.update (Just . move direction) player
+moveInDirection player direction = currentLocation player >>= moveTo player . move direction
 
 -- Item Locations
 
@@ -114,7 +114,7 @@ itemsAtCurrentLocation p = do
   return $ maybe [] id . M.lookup location . items $ st
 
 addItemAt :: (S.MonadState (GameState player item) m, Ord item) => Location -> item -> m ()
-addItemAt location item = S.modify $ modifyItems $ M.update (Just . insert item) location
+addItemAt location item = S.modify $ modifyItems $ M.alter (maybe (Just [item]) $ Just . insert item) location
 
 removeItemAt :: (S.MonadState (GameState player item) m, Ord item) => Location -> item -> m ()
-removeItemAt location item = S.modify $ modifyItems $ M.update (Just . delete item) location
+removeItemAt location item = S.modify $ modifyItems $ M.adjust (delete item) location
