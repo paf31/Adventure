@@ -16,11 +16,11 @@
 
 module Game.Adventure.Parser (
     CommandParser(..),
-    command,
-    readCommand,
     match,
     matchAny,
-    str
+    str,
+    direction,
+    evalCommandParser
 ) where
 
 
@@ -49,20 +49,8 @@ str = do
     (s:ss') -> S.put(ss') >> return s
     _ -> mzero
 
-readCommand :: CommandParser a -> String -> Maybe a
-readCommand p = S.evalStateT (runCommandParser p) . splitOneOf " \t"
+evalCommandParser :: CommandParser a -> String -> Maybe a
+evalCommandParser p = S.evalStateT (runCommandParser p) . splitOneOf " \t"
 
 direction :: CommandParser Direction
 direction = matchAny [ ("North", North), ("East", East), ("South", South), ("West", West) ]
-
-scriptCommand :: CommandParser item -> CommandParser (ScriptCommand item)
-scriptCommand item = Combine <$> (match "combine" *> item) <*> (match "with" *> item)
-                 <|> Use <$> (match "use" *> item)
-
-systemCommand :: CommandParser item -> CommandParser (SystemCommand item)
-systemCommand item = Move <$> (match "move" *> direction)
-                 <|> Take <$> (match "take" *> item)
-                 <|> matchAny [ ("look", Look), ("quit", Quit) ]
-
-command :: CommandParser item -> CommandParser (Command item)
-command item = Command <$> ((Left <$> systemCommand item) <|> (Right <$> scriptCommand item))

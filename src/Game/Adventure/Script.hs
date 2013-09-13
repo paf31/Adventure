@@ -24,9 +24,11 @@ import Control.Monad.Writer
 import Game.Adventure.Command
 import Game.Adventure.State
 
+import Game.Adventure.Parser
+
 type MonadGame player item m = (MonadState (GameState player item) m, MonadWriter [String] m)
 
 data Script player item = Script
   { initialize :: (MonadGame player item m) => m ()
-  , step       :: (MonadGame player item m) => player -> ScriptCommand item -> m ()
+  , step       :: (MonadGame player item m) => player -> CommandParser (m ())
   }

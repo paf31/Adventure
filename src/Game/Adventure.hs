@@ -23,7 +23,7 @@ module Game.Adventure (
   module Game.Adventure.Actions,
   module Game.Adventure.Script,
 
-  runScript,
+  standardCommands,
 
   singlePlayer
 
@@ -31,6 +31,7 @@ module Game.Adventure (
 
 import Control.Monad
 import Control.Monad.Trans
+import Control.Applicative
 import System.Console.Haskeline
 import Control.Monad.State.Class
 import Control.Monad.Writer.Class
@@ -48,9 +49,8 @@ import Game.Adventure.Script
 untilM :: (Monad m) => m Bool -> m ()
 untilM cond = fix $ \action -> cond >>= flip unless action
 
-runScript :: (Eq item, Show item, Ord item, Ord player, MonadGame player item m) => Command item -> player -> Script player item -> m ()
-runScript (Command (Right cmd)) player script = step script player cmd
-runScript (Command (Left Look)) player script = do
+look :: (Show item, Ord item, Ord player, MonadGame player item m) => player -> m ()
+look player = do
   st <- S.get
   location <- currentLocation player
   inventory <- inventory player
@@ -58,8 +58,13 @@ runScript (Command (Left Look)) player script = do
   showMessage $ "You are at " ++ show location ++ ". "
   flip mapM_ inventory $ \item -> showMessage $ "You have '" ++ show item ++ "'."
   flip mapM_ itemsVisible $ \item -> showMessage $ "You can see '" ++ show item ++ "'."
-runScript (Command (Left (Move direction))) player _ = moveInDirection player direction
-runScript (Command (Left (Take item))) player _ = pickUp player item
+
+standardCommands :: (Show item, Eq item, Ord item, Ord player, MonadGame player item m) => CommandParser item -> player -> CommandParser (m ())
+standardCommands item player = msum
+  [ match "look" >> return (look player)
+  , moveInDirection player <$> (match "move" *> direction)
+  , pickUp player <$> (match "take" *> item)
+  ]
 
 singlePlayer :: (Eq item, Show item, Ord item, Ord player) => CommandParser item -> player -> Script player item -> IO ()
 singlePlayer item player script =
@@ -73,10 +78,14 @@ singlePlayer item player script =
       (quit, msgs) <- W.runWriterT $ case input of
         Nothing -> return False
         Just line -> do
-          case readCommand (command item) line of
+          let
+            parser = msum
+              [ (,) <$> (match "quit" >> return (return ())) <*> pure True
+              , (,) <$> standardCommands item player <*> pure False
+              , (,) <$> step script player <*> pure False ]
+          case evalCommandParser parser line of
             Nothing -> showMessage "Unknown command" >> return False
-            Just (Command (Left Quit)) -> return True
-            Just command -> runScript command player script >> return False
+            Just (action, quit) -> action >> return quit
       mapM_ (lift . outputStrLn) msgs
       return quit
 
