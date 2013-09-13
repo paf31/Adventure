@@ -48,10 +48,8 @@ import Game.Adventure.Script
 untilM :: (Monad m) => m Bool -> m ()
 untilM cond = fix $ \action -> cond >>= flip unless action
 
-runScript :: (Eq item, Show item, Ord item, Ord player, MonadGame player item m) => Command item -> player -> Script player item -> m Bool
-runScript (Command (Right cmd)) player script = do
-  step script player cmd
-  return False
+runScript :: (Eq item, Show item, Ord item, Ord player, MonadGame player item m) => Command item -> player -> Script player item -> m ()
+runScript (Command (Right cmd)) player script = step script player cmd
 runScript (Command (Left Look)) player script = do
   st <- S.get
   location <- currentLocation player
@@ -60,14 +58,8 @@ runScript (Command (Left Look)) player script = do
   showMessage $ "You are at " ++ show location ++ ". "
   flip mapM_ inventory $ \item -> showMessage $ "You have '" ++ show item ++ "'."
   flip mapM_ itemsVisible $ \item -> showMessage $ "You can see '" ++ show item ++ "'."
-  return False
-runScript (Command (Left (Move direction))) player _ = do
-  moveInDirection player direction
-  return False
-runScript (Command (Left (Take item))) player _ = do
-  pickUp player item
-  return False
-runScript (Command (Left Quit)) _ _ = return True
+runScript (Command (Left (Move direction))) player _ = moveInDirection player direction
+runScript (Command (Left (Take item))) player _ = pickUp player item
 
 singlePlayer :: (Eq item, Show item, Ord item, Ord player) => CommandParser item -> player -> Script player item -> IO ()
 singlePlayer item player script =
@@ -82,10 +74,9 @@ singlePlayer item player script =
         Nothing -> return False
         Just line -> do
           case readCommand (command item) line of
-            Nothing -> do
-              showMessage "Unknown command"
-              return False
-            Just command -> runScript command player script
+            Nothing -> showMessage "Unknown command" >> return False
+            Just (Command (Left Quit)) -> return True
+            Just command -> runScript command player script >> return False
       mapM_ (lift . outputStrLn) msgs
       return quit
 
