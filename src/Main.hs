@@ -14,9 +14,11 @@
 
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DoAndIfThenElse #-}
 
 module Main where
 
+import Data.Monoid
 import Control.Monad
 import Control.Applicative
 
@@ -26,37 +28,59 @@ data Player = Ego deriving (Show, Eq, Ord)
 
 data Lit = Lit | Unlit deriving (Show, Eq, Ord)
 
-data Item = Matches | Bucket | Kindling Lit deriving (Eq, Ord)
+data Full = Full | Empty deriving (Show, Eq, Ord)
+
+data Item = Matches | Bucket Full | Firewood Lit deriving (Eq, Ord)
 
 instance Show Item where
-  show (Kindling Lit) = "Burning Kindling"
-  show (Kindling Unlit) = "Kindling"
+  show (Firewood Lit) = "Burning firewood"
+  show (Firewood Unlit) = "Firewood"
   show Matches = "Matches"
-  show Bucket = "Bucket"
+  show (Bucket Full) = "Bucket full of water"
+  show (Bucket Empty) = "Empty bucket"
 
 item :: CommandParser Item
-item = matchAny [ ("Matches", Matches), ("Bucket", Bucket), ("Kindling", Kindling Unlit), ("Burning Kindling", Kindling Lit) ]
+item = matchAny [ ("Matches", Matches), ("Bucket", Bucket Empty), ("Firewood", Firewood Unlit) ]
 
 -- Example Game
 
-script :: (Ord player) => Script player Item
-script = Script init step
+firstRoom :: (Ord player) => Script player Item
+firstRoom = room center description $ \player -> do
+  match "light" >> (match "fire" <|> match "wood" <|> match "firewood" <|> match "matches") >> (return $ do
+    with player Matches $ with player (Firewood Unlit) $ do
+      showMessage "You light the firewood with the matches."
+      removeFromInventory player Matches
+      removeFromInventory player (Firewood Unlit)
+      addToInventory player (Firewood Lit))
   where
-  init :: (MonadGame player Item m) => m ()
-  init = mapM_ (addItemAt center) [Matches, Bucket, Kindling Unlit]
-  step player = msum
-    [ match "light" >> (match "Kindling" <|> match "Matches") >> (return $ do
-        with player Matches $ with player (Kindling Unlit) $ do
-          showMessage "You set fire to the kindling."
-          removeFromInventory player Matches
-          removeFromInventory player (Kindling Unlit)
-          addToInventory player (Kindling Lit))
-    , match "use" >> match "Bucket" >> (return $ do
-        with player Bucket $ with player (Kindling Lit) $ do
-          showMessage "You extinguish the flames."
-          removeFromInventory player Bucket
-          removeFromInventory player (Kindling Lit))
-    ]
+  description player = do
+    lit <- has player (Firewood Lit)
+    if lit
+    then return "the kitchen"
+    else return "a dimly lit room"
+
+courtyard :: (Ord player) => Script player Item
+courtyard = room (move North center) (const $ return "a courtyard with a fountain") $ \player -> msum
+  [ match "fill" >> match "Bucket" >> (return $ do
+    with player (Bucket Empty) $ do
+      showMessage "You fill the bucket at the fountain"
+      removeFromInventory player (Bucket Empty)
+      addToInventory player (Bucket Full))
+  ]
+
+script :: (Ord player) => Script player Item
+script = mconcat
+  [ initializeWith $ do
+      mapM_ (addItemAt center) [Matches, Firewood Unlit]
+      addItemAt (move North center) (Bucket Empty)
+  , firstRoom
+  , courtyard
+  , anywhere $ \player -> match "use" >> match "Bucket" >> (return $ do
+      with player (Bucket Full) $ with player (Firewood Lit) $ do
+        showMessage "You extinguish the flames."
+        removeFromInventory player (Bucket Full)
+        removeFromInventory player (Firewood Lit))
+  ]
 
 main :: IO ()
 main = singlePlayer item Ego script

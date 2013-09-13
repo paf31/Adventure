@@ -20,6 +20,7 @@
 module Game.Adventure.Actions where
 
 import Data.List
+import Data.Maybe
 import Control.Monad.Trans
 import qualified Data.Map as M
 import qualified Control.Monad.State as S
@@ -92,6 +93,17 @@ putDown player item = do
 
 pickUpIfNotInInventory :: (MonadGame player item m, Ord player, Ord item, Eq item, Show item) => player -> item -> m ()
 pickUpIfNotInInventory player item = without player item $ pickUp player item
+
+look :: (Show item, Ord item, Ord player, MonadGame player item m) => player -> Script player item -> m ()
+look player script = do
+  st <- S.get
+  location <- currentLocation player
+  inventory <- inventory player
+  itemsVisible <- itemsAtCurrentLocation player
+  description <- fromMaybe (return "an unknown location") (describe script player location)
+  showMessage $ "You are in " ++ description ++ "."
+  flip mapM_ inventory $ \item -> showMessage $ "You have '" ++ show item ++ "'."
+  flip mapM_ itemsVisible $ \item -> showMessage $ "You can see '" ++ show item ++ "'."
 
 -- Player Locations
 
