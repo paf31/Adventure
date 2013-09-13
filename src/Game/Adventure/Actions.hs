@@ -77,6 +77,7 @@ pickUp player item = do
   if itemIsHere
   then do
     addToInventory player item
+    removeItemAt location item
     W.tell ["You now have '" ++ show item ++ "'. "]
   else
     W.tell ["That item is not here."]
@@ -86,7 +87,8 @@ putDown player item = do
   location <- currentLocation player
   with player item $ do
     removeFromInventory player item
-    W.tell ["You no longer have '" ++ show item ++ "'. "]
+    addItemAt location item
+    W.tell ["You put down '" ++ show item ++ "'. "]
 
 pickUpIfNotInInventory :: (MonadGame player item m, Ord player, Ord item, Eq item, Show item) => player -> item -> m ()
 pickUpIfNotInInventory player item = without player item $ pickUp player item

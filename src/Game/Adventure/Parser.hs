@@ -23,7 +23,7 @@ module Game.Adventure.Parser (
     evalCommandParser
 ) where
 
-
+import Data.Char
 import Data.List
 import Data.List.Split
 import Control.Monad
@@ -36,7 +36,7 @@ import Game.Adventure.Command
 newtype CommandParser a = CommandParser { runCommandParser :: S.StateT [String] Maybe a } deriving (Functor, Applicative, Monad, S.MonadState [String], MonadPlus, Alternative)
 
 match :: String -> CommandParser ()
-match s = str >>= guard . (s ==)
+match s = str >>= guard . ((==) (map toUpper s) . map toUpper)
 
 matchAny :: [(String, a)] -> CommandParser a
 matchAny = foldl (<|>) mzero . map matchOne

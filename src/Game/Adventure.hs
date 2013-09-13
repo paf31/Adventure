@@ -64,6 +64,7 @@ standardCommands item player = msum
   [ match "look" >> return (look player)
   , moveInDirection player <$> (match "move" *> direction)
   , pickUp player <$> (match "take" *> item)
+  , putDown player <$> (match "drop" *> item)
   ]
 
 singlePlayer :: (Eq item, Show item, Ord item, Ord player) => CommandParser item -> player -> Script player item -> IO ()
