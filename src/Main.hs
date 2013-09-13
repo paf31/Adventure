@@ -28,9 +28,9 @@ item = matchAny [ ("Matches", Matches), ("Bucket", Bucket), ("Kindling", Kindlin
 -- Example Game
 
 script :: Script Player Item
-script = do
-  mapM_ (addItemAt center) [Matches, Bucket, Kindling]
-  return $ \player cmd -> do
+script = Script
+  { initialize = mapM_ (addItemAt center) [Matches, Bucket, Kindling]
+  , step = \player cmd -> do
     case cmd of
       Combine Matches Kindling ->
         with player Matches $ with player Kindling $ do
@@ -41,6 +41,7 @@ script = do
         showMessage "You extinguish the flames."
         putDown player Bucket
       _ -> showMessage "I don't know how to do that."
+  }
 
 main :: IO ()
 main = singlePlayer item Ego script
