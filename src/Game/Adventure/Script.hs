@@ -27,41 +27,41 @@ import Game.Adventure.Command
 import Game.Adventure.State
 import Game.Adventure.Parser
 
-type MonadGame player item m = (MonadState (GameState player item) m, MonadWriter [String] m)
+type MonadGame item m = (MonadState (GameState item) m, MonadWriter [String] m)
 
-data Script player item = Script
-  { initialize :: (MonadGame player item m) => m ()
-  , step       :: (MonadGame player item m) => player -> Location -> CommandParser (m ())
-  , describe   :: (MonadGame player item m) => player -> Location -> Maybe (m String)
+data Script item = Script
+  { initialize :: (MonadGame item m) => m ()
+  , step       :: (MonadGame item m) => Location -> CommandParser (m ())
+  , describe   :: (MonadGame item m) => Location -> Maybe (m String)
   }
 
-instance Monoid (Script player item) where
+instance Monoid (Script item) where
   mempty = Script
     { initialize = return ()
-    , step = const $ const mzero
-    , describe = const $ const Nothing
+    , step = const mzero
+    , describe = const Nothing
     }
   mappend s1 s2 = Script
     { initialize = initialize s1 >> initialize s2
-    , step = \p l -> step s1 p l `mplus` step s2 p l
-    , describe = \p l -> describe s1 p l `mplus` describe s2 p l
+    , step = \l -> step s1 l `mplus` step s2 l
+    , describe = \l -> describe s1 l `mplus` describe s2 l
     }
 
-initializeWith :: (forall m. (MonadGame player item m) => m ()) -> Script player item
+initializeWith :: (forall m. (MonadGame item m) => m ()) -> Script item
 initializeWith action = mempty { initialize = action }
 
-anywhere :: (forall m. (MonadGame player item m) => player -> CommandParser (m ())) -> Script player item
-anywhere parser = mempty { step = \player _ -> parser player }
+anywhere :: (forall m. (MonadGame item m) => CommandParser (m ())) -> Script item
+anywhere parser = mempty { step = const parser }
 
-room :: Location -> (forall m. (MonadGame player item m) => player -> m String) ->
-                    (forall m. (MonadGame player item m) => player -> CommandParser (m ())) ->
-                    Script player item
+room :: Location -> (forall m. (MonadGame item m) => m String) ->
+                    (forall m. (MonadGame item m) => CommandParser (m ())) ->
+                    Script item
 room loc name parser = mempty
   { step = step'
   , describe = describe'
   }
   where
-    step' player loc' | loc' == loc = parser player
-    step' _ _ = mzero
-    describe' player loc' | loc' == loc = Just (name player)
-    describe' _ _ = Nothing
+    step' loc' | loc' == loc = parser
+    step' _ = mzero
+    describe' loc' | loc' == loc = Just name
+    describe' _ = Nothing

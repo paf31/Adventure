@@ -24,8 +24,6 @@ import Control.Applicative
 
 import Game.Adventure
 
-data Player = Ego deriving (Show, Eq, Ord)
-
 data Lit = Lit | Unlit deriving (Show, Eq, Ord)
 
 data Full = Full | Empty deriving (Show, Eq, Ord)
@@ -44,43 +42,44 @@ item = matchAny [ ("Matches", Matches), ("Bucket", Bucket Empty), ("Firewood", F
 
 -- Example Game
 
-firstRoom :: (Ord player) => Script player Item
-firstRoom = room center description $ \player -> do
+firstRoom :: Script Item
+firstRoom = room center description $ do
   match "light" >> (match "fire" <|> match "wood" <|> match "firewood" <|> match "matches") >> (return $ do
-    with player Matches $ with player (Firewood Unlit) $ do
+    with Matches $ with (Firewood Unlit) $ do
       showMessage "You light the firewood with the matches."
-      removeFromInventory player Matches
-      removeFromInventory player (Firewood Unlit)
-      addToInventory player (Firewood Lit))
+      removeFromInventory Matches
+      removeFromInventory (Firewood Unlit)
+      addToInventory (Firewood Lit))
   where
-  description player = do
-    lit <- has player (Firewood Lit)
+  description :: (MonadGame Item m) => m String
+  description = do
+    lit <- has (Firewood Lit)
     if lit
     then return "the kitchen"
     else return "a dimly lit room"
 
-courtyard :: (Ord player) => Script player Item
-courtyard = room (move North center) (const $ return "a courtyard with a fountain") $ \player -> msum
+courtyard :: Script Item
+courtyard = room (move North center) (return "a courtyard with a fountain") $ msum
   [ match "fill" >> match "Bucket" >> (return $ do
-    with player (Bucket Empty) $ do
+    with (Bucket Empty) $ do
       showMessage "You fill the bucket at the fountain"
-      removeFromInventory player (Bucket Empty)
-      addToInventory player (Bucket Full))
+      removeFromInventory (Bucket Empty)
+      addToInventory (Bucket Full))
   ]
 
-script :: (Ord player) => Script player Item
+script :: Script Item
 script = mconcat
   [ initializeWith $ do
       mapM_ (addItemAt center) [Matches, Firewood Unlit]
       addItemAt (move North center) (Bucket Empty)
   , firstRoom
   , courtyard
-  , anywhere $ \player -> match "use" >> match "Bucket" >> (return $ do
-      with player (Bucket Full) $ with player (Firewood Lit) $ do
+  , anywhere $ match "use" >> match "Bucket" >> (return $ do
+      with (Bucket Full) $ with (Firewood Lit) $ do
         showMessage "You extinguish the flames."
-        removeFromInventory player (Bucket Full)
-        removeFromInventory player (Firewood Lit))
+        removeFromInventory (Bucket Full)
+        removeFromInventory (Firewood Lit))
   ]
 
 main :: IO ()
-main = singlePlayer item Ego script
+main = singlePlayer item script

@@ -32,32 +32,32 @@ move West (Location x y) = Location (x - 1) y
 distance :: Location -> Location -> Int
 distance (Location x1 y1) (Location x2 y2) = abs (x1 - x2) + abs (y1 - y2)
 
-data GameState player item = GameState
-  { inventories     :: M.Map player [item]
+data GameState item = GameState
+  { inventory       :: [item]
   , items           :: M.Map Location [item]
-  , playerLocations :: M.Map player Location
+  , location        :: Location
   } deriving (Show, Eq)
 
-initialState :: GameState player item
+initialState :: GameState item
 initialState = GameState
-  { inventories = M.empty
+  { inventory = []
   , items = M.empty
-  , playerLocations = M.empty }
+  , location = center }
 
-setInventories :: M.Map player [item] -> GameState player item -> GameState player item
-setInventories m st = st { inventories = m }
+setInventory :: [item] -> GameState item -> GameState item
+setInventory m st = st { inventory = m }
 
-setItems :: M.Map Location [item] -> GameState player item -> GameState player item
+setItems :: M.Map Location [item] -> GameState item -> GameState item
 setItems locations st = st { items = locations }
 
-setPlayerLocations :: M.Map player Location -> GameState player item -> GameState player item
-setPlayerLocations locations st = st { playerLocations = locations }
+setLocation :: Location -> GameState item -> GameState item
+setLocation loc st = st { location = loc }
 
-modifyInventories :: (M.Map player [item] -> M.Map player [item]) -> GameState player item -> GameState player item
-modifyInventories f st = st { inventories = f (inventories st) }
+modifyInventory :: ([item] -> [item]) -> GameState item -> GameState item
+modifyInventory f st = st { inventory = f (inventory st) }
 
-modifyItems :: (M.Map Location [item] -> M.Map Location [item]) -> GameState player item -> GameState player item
+modifyItems :: (M.Map Location [item] -> M.Map Location [item]) -> GameState item -> GameState item
 modifyItems f st = st { items = f (items st) }
 
-modifyPlayerLocations :: (M.Map player Location -> M.Map player Location) -> GameState player item -> GameState player item
-modifyPlayerLocations f st = st { playerLocations = f (playerLocations st) }
+modifyLocation :: (Location -> Location) -> GameState item -> GameState item
+modifyLocation f st = st { location = f (location st) }

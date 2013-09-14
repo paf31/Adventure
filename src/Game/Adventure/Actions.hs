@@ -32,103 +32,97 @@ import Game.Adventure.Script
 
 -- Text
 
-showMessage  :: (MonadGame player item m) => String -> m ()
+showMessage  :: (MonadGame item m) => String -> m ()
 showMessage = W.tell . return
 
 -- Inventory Functions
 
-inventory :: (MonadGame player item m, Ord player) => player -> m [item]
-inventory p = do
-  st <- S.get
-  return $ maybe [] id . M.lookup p . inventories $ st
-
-has :: (MonadGame player item m, Ord player, Eq item) => player -> item -> m Bool
-has player item = do
-  inv <- inventory player
+has :: (MonadGame item m, Eq item) => item -> m Bool
+has item = do
+  inv <- S.get >>= return . inventory
   return $ item `elem` inv
 
-with :: (W.MonadWriter [String] m, MonadGame player item m, Ord player, Eq item, Show item) => player -> item -> m () -> m ()
-with player item action = do
-  inInventory <- has player item
+with :: (MonadGame item m, Eq item, Show item) => item -> m () -> m ()
+with item action = do
+  inInventory <- has item
   if inInventory
   then
     action
   else
     W.tell ["You do not have '" ++ show item ++ "'."]
 
-without :: (MonadGame player item m, Ord player, Eq item, Show item) => player -> item -> m () -> m ()
-without player item action = do
-  inInventory <- has player item
+without :: (MonadGame item m, Eq item, Show item) => item -> m () -> m ()
+without item action = do
+  inInventory <- has item
   if inInventory
   then do
     W.tell ["You cannot do that if you have '" ++ show item ++ "'."]
   else
     action
 
-addToInventory :: (MonadGame player item m, Ord player, Eq item, Show item) => player -> item -> m ()
-addToInventory player item = S.modify $ modifyInventories $ M.alter (maybe (Just [item]) (Just . (:) item)) player
+addToInventory :: (MonadGame item m, Eq item, Show item) => item -> m ()
+addToInventory item = S.modify $ modifyInventory $ (:) item
 
-removeFromInventory :: (MonadGame player item m, Ord player, Eq item, Show item) => player -> item -> m ()
-removeFromInventory player item = S.modify $ modifyInventories $ M.adjust (delete item) player
+removeFromInventory :: (MonadGame item m, Eq item, Show item) => item -> m ()
+removeFromInventory item = S.modify $ modifyInventory $ delete item
 
-pickUp :: (MonadGame player item m, Ord player, Eq item, Ord item, Show item) => player -> item -> m ()
-pickUp player item = do
-  location <- currentLocation player
+pickUp :: (MonadGame item m, Eq item, Ord item, Show item) => item -> m ()
+pickUp item = do
+  location <- currentLocation
   itemIsHere <- isItemAtLocation location item
   if itemIsHere
   then do
-    addToInventory player item
+    addToInventory  item
     removeItemAt location item
     W.tell ["You now have '" ++ show item ++ "'. "]
   else
     W.tell ["That item is not here."]
 
-putDown :: (MonadGame player item m, Ord player, Eq item, Ord item, Show item) => player -> item -> m ()
-putDown player item = do
-  location <- currentLocation player
-  with player item $ do
-    removeFromInventory player item
+putDown :: (MonadGame item m, Eq item, Ord item, Show item) => item -> m ()
+putDown item = do
+  location <- currentLocation
+  with item $ do
+    removeFromInventory item
     addItemAt location item
     W.tell ["You put down '" ++ show item ++ "'. "]
 
-pickUpIfNotInInventory :: (MonadGame player item m, Ord player, Ord item, Eq item, Show item) => player -> item -> m ()
-pickUpIfNotInInventory player item = without player item $ pickUp player item
+pickUpIfNotInInventory :: (MonadGame item m, Ord item, Eq item, Show item) => item -> m ()
+pickUpIfNotInInventory  item = without  item $ pickUp  item
 
-look :: (Show item, Ord item, Ord player, MonadGame player item m) => player -> Script player item -> m ()
-look player script = do
+look :: (Show item, Ord item, MonadGame item m) => Script  item -> m ()
+look script = do
   st <- S.get
-  location <- currentLocation player
-  inventory <- inventory player
-  itemsVisible <- itemsAtCurrentLocation player
-  description <- fromMaybe (return "an unknown location") (describe script player location)
+  location <- currentLocation
+  itemsVisible <- itemsAtCurrentLocation
+  description <- fromMaybe (return "an unknown location") (describe script  location)
   showMessage $ "You are in " ++ description ++ "."
-  flip mapM_ inventory $ \item -> showMessage $ "You have '" ++ show item ++ "'."
+  flip mapM_ (inventory st) $ \item -> showMessage $ "You have '" ++ show item ++ "'."
   flip mapM_ itemsVisible $ \item -> showMessage $ "You can see '" ++ show item ++ "'."
 
--- Player Locations
+-- Player Location
 
-currentLocation :: (MonadGame player item m, Ord player) => player -> m Location
-currentLocation p = S.get >>= return . maybe center id . M.lookup p . playerLocations
+currentLocation :: (MonadGame item m) => m Location
+currentLocation = S.get >>= return . location
 
-moveTo :: (MonadGame player item m, Ord player) => player -> Location -> m ()
-moveTo player location = S.modify $ modifyPlayerLocations $ M.insert player location
+moveTo :: (MonadGame item m) => Location -> m ()
+moveTo = S.modify . setLocation
 
-moveInDirection :: (MonadGame player item m, Ord player) => player -> Direction -> m ()
-moveInDirection player direction = currentLocation player >>= moveTo player . move direction
+moveInDirection :: (MonadGame item m) => Direction -> m ()
+moveInDirection = S.modify . modifyLocation . move
 
 -- Item Locations
 
-isItemAtLocation :: (MonadGame player item m, Eq item) => Location -> item -> m Bool
+isItemAtLocation :: (MonadGame item m, Eq item) => Location -> item -> m Bool
 isItemAtLocation location item = S.get >>= return . maybe False (elem item) . M.lookup location . items
 
-itemsAtCurrentLocation :: (MonadGame player item m, Ord player, Ord item) => player -> m [item]
-itemsAtCurrentLocation p = do
-  location <- currentLocation p
+itemsAtCurrentLocation :: (MonadGame item m, Ord item) => m [item]
+itemsAtCurrentLocation = do
+  location <- currentLocation
   st <- S.get
   return $ maybe [] id . M.lookup location . items $ st
 
-addItemAt :: (MonadGame player item m, Ord item) => Location -> item -> m ()
+addItemAt :: (MonadGame item m, Ord item) => Location -> item -> m ()
 addItemAt location item = S.modify $ modifyItems $ M.alter (maybe (Just [item]) $ Just . insert item) location
 
-removeItemAt :: (MonadGame player item m, Ord item) => Location -> item -> m ()
+removeItemAt :: (MonadGame item m, Ord item) => Location -> item -> m ()
 removeItemAt location item = S.modify $ modifyItems $ M.adjust (delete item) location

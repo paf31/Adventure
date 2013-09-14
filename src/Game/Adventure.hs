@@ -49,16 +49,16 @@ import Game.Adventure.Script
 untilM :: (Monad m) => m Bool -> m ()
 untilM cond = fix $ \action -> cond >>= flip unless action
 
-standardCommands :: (Show item, Eq item, Ord item, Ord player, MonadGame player item m) => Script player item -> CommandParser item -> player -> CommandParser (m ())
-standardCommands script item player = msum
-  [ match "look" >> return (look player script)
-  , moveInDirection player <$> (match "move" *> direction)
-  , pickUp player <$> (match "take" *> item)
-  , putDown player <$> (match "drop" *> item)
+standardCommands :: (Show item, Eq item, Ord item, MonadGame item m) => Script item -> CommandParser item -> CommandParser (m ())
+standardCommands script item = msum
+  [ match "look" >> return (look script)
+  , moveInDirection <$> (match "move" *> direction)
+  , pickUp <$> (match "take" *> item)
+  , putDown <$> (match "drop" *> item)
   ]
 
-singlePlayer :: (Eq item, Show item, Ord item, Ord player) => CommandParser item -> player -> Script player item -> IO ()
-singlePlayer item player script =
+singlePlayer :: (Eq item, Show item, Ord item) => CommandParser item -> Script item -> IO ()
+singlePlayer item script =
   runInputT (setComplete noCompletion defaultSettings)
   $ flip S.evalStateT initialState
   $ do
@@ -69,12 +69,12 @@ singlePlayer item player script =
       (quit, msgs) <- W.runWriterT $ case input of
         Nothing -> return False
         Just line -> do
-          location <- currentLocation player
+          location <- currentLocation
           let
             parser = msum
               [ (,) <$> (match "quit" >> return (return ())) <*> pure True
-              , (,) <$> standardCommands script item player <*> pure False
-              , (,) <$> step script player location <*> pure False ]
+              , (,) <$> standardCommands script item <*> pure False
+              , (,) <$> step script location <*> pure False ]
           case evalCommandParser parser line of
             Nothing -> showMessage "Unknown command" >> return False
             Just (action, quit) -> action >> return quit
