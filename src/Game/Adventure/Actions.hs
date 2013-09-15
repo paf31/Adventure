@@ -89,13 +89,12 @@ putDown item = do
 pickUpIfNotInInventory :: (MonadGame item m, Ord item, Eq item, Show item) => item -> m ()
 pickUpIfNotInInventory  item = without  item $ pickUp  item
 
-look :: (Show item, Ord item, MonadGame item m) => Script  item -> m ()
-look script = do
+look :: (Show item, Ord item, MonadGame item m) => Room item -> m ()
+look room = do
   st <- S.get
   location <- currentLocation
   itemsVisible <- itemsAtCurrentLocation
-  description <- fromMaybe (return "an unknown location") (describe script  location)
-  showMessage $ "You are in " ++ description ++ "."
+  description room >>= showMessage
   flip mapM_ (inventory st) $ \item -> showMessage $ "You have '" ++ show item ++ "'."
   flip mapM_ itemsVisible $ \item -> showMessage $ "You can see '" ++ show item ++ "'."
 
@@ -104,11 +103,8 @@ look script = do
 currentLocation :: (MonadGame item m) => m Location
 currentLocation = S.get >>= return . location
 
-moveTo :: (MonadGame item m) => Location -> m ()
-moveTo = S.modify . setLocation
-
-moveInDirection :: (MonadGame item m) => Direction -> m ()
-moveInDirection = S.modify . modifyLocation . move
+moveTo :: (MonadGame item m) => Room item -> m ()
+moveTo = S.modify . setLocation . name
 
 -- Item Locations
 

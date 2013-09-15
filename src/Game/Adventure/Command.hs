@@ -13,5 +13,3 @@
 -----------------------------------------------------------------------------
 
 module Game.Adventure.Command where
-
-data Direction = North | South | East | West deriving (Show, Eq)

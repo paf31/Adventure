@@ -19,7 +19,6 @@ module Game.Adventure.Parser (
     match,
     matchAny,
     str,
-    direction,
     evalCommandParser
 ) where
 
@@ -51,6 +50,3 @@ str = do
 
 evalCommandParser :: CommandParser a -> String -> Maybe a
 evalCommandParser p = S.evalStateT (runCommandParser p) . splitOneOf " \t"
-
-direction :: CommandParser Direction
-direction = matchAny [ ("North", North), ("East", East), ("South", South), ("West", West) ]
