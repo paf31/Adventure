@@ -134,3 +134,8 @@ currentLocation = S.get >>= return . location
 
 moveTo :: (MonadGame item m) => Room item -> m ()
 moveTo = S.modify . setLocation . name
+
+-- Standard Actions
+
+standardCommands :: (Show item, Eq item, Ord item, MonadGame item m) => Room item -> CommandParser item -> CommandParser (m ())
+standardCommands room item = match "look" >> return (look room)
