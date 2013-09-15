@@ -76,4 +76,4 @@ courtyard = Room "courtyard" [Bucket Empty] (return "You are in a courtyard with
   ]
 
 main :: IO ()
-main = singlePlayer item [kitchen, courtyard] kitchen
+main = play item [kitchen, courtyard] kitchen

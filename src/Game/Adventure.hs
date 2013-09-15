@@ -20,11 +20,10 @@ module Game.Adventure (
   module Game.Adventure.Parser,
   module Game.Adventure.State,
   module Game.Adventure.Actions,
-  module Game.Adventure.Script,
 
   standardCommands,
 
-  singlePlayer
+  play
 
 ) where
 
@@ -45,7 +44,6 @@ import qualified Control.Monad.Writer as W
 import Game.Adventure.Parser
 import Game.Adventure.State
 import Game.Adventure.Actions
-import Game.Adventure.Script
 
 untilM :: (Monad m) => m Bool -> m ()
 untilM cond = fix $ \action -> cond >>= flip unless action
@@ -60,8 +58,8 @@ standardCommands room item = msum
 setupRoom :: (Ord item, MonadGame item m) => Room item -> m ()
 setupRoom room = mapM_ (addItemAt $ name room) . initialItems $ room
 
-singlePlayer :: (Eq item, Show item, Ord item) => CommandParser item -> [Room item] -> Room item -> IO ()
-singlePlayer item rooms startAt =
+play :: (Eq item, Show item, Ord item) => CommandParser item -> [Room item] -> Room item -> IO ()
+play item rooms startAt =
   runInputT (setComplete noCompletion defaultSettings)
   $ flip S.evalStateT (initialState (name startAt))
   $ do

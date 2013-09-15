@@ -12,6 +12,7 @@
 --
 -----------------------------------------------------------------------------
 
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE DoAndIfThenElse #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -27,7 +28,18 @@ import qualified Control.Monad.State as S
 import qualified Control.Monad.Writer as W
 
 import Game.Adventure.State
-import Game.Adventure.Script
+import Game.Adventure.Parser
+
+-- Game Monad
+
+type MonadGame item m = (S.MonadState (GameState item) m, W.MonadWriter [String] m)
+
+data Room item = Room
+  { name         :: Location
+  , initialItems :: [item]
+  , description  :: (MonadGame item m) => m String
+  , step         :: (MonadGame item m) => CommandParser (m ())
+  }
 
 -- Text
 
