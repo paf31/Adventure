@@ -17,7 +17,6 @@
 
 module Game.Adventure (
 
-  module Game.Adventure.Command,
   module Game.Adventure.Parser,
   module Game.Adventure.State,
   module Game.Adventure.Actions,
@@ -43,7 +42,6 @@ import Data.List (find)
 import qualified Control.Monad.State as S
 import qualified Control.Monad.Writer as W
 
-import Game.Adventure.Command
 import Game.Adventure.Parser
 import Game.Adventure.State
 import Game.Adventure.Actions

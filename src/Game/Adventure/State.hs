@@ -16,8 +16,6 @@ module Game.Adventure.State where
 
 import qualified Data.Map as M
 
-import Game.Adventure.Command
-
 type Location = String
 
 data GameState item = GameState

@@ -27,7 +27,6 @@ import qualified Control.Monad.State as S
 import qualified Control.Monad.Writer as W
 
 import Game.Adventure.State
-import Game.Adventure.Command
 import Game.Adventure.Script
 
 -- Text

@@ -23,7 +23,6 @@ import Control.Applicative
 import Control.Monad.State
 import Control.Monad.Writer
 
-import Game.Adventure.Command
 import Game.Adventure.State
 import Game.Adventure.Parser
 

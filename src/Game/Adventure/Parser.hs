@@ -30,8 +30,6 @@ import Control.Applicative
 import qualified Control.Monad.State as S
 import qualified Data.Map as M
 
-import Game.Adventure.Command
-
 newtype CommandParser a = CommandParser { runCommandParser :: S.StateT [String] Maybe a } deriving (Functor, Applicative, Monad, S.MonadState [String], MonadPlus, Alternative)
 
 match :: String -> CommandParser ()

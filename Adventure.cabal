@@ -10,7 +10,7 @@ synopsis: Text Based Adventure Game Engine
 description: A sample library for the Los Angeles Haskell User Group
 author: Phil Freeman, Jeff Polakow
 data-dir: ""
- 
+
 executable Adventure
     build-depends: mtl -any, split -any, containers -any,
                    haskeline -any, base -any
@@ -18,6 +18,6 @@ executable Adventure
     buildable: True
     hs-source-dirs: src
     other-modules: Game.Adventure.Script Game.Adventure.Actions
-                   Game.Adventure.State Game.Adventure.Parser Game.Adventure.Command
+                   Game.Adventure.State Game.Adventure.Parser
                    Game.Adventure
- 
+
