@@ -62,11 +62,12 @@ play :: (Eq item, Show item, Ord item) => CommandParser item -> [Room item] -> R
 play item rooms startAt =
   runInputT (setComplete noCompletion defaultSettings)
   $ flip S.evalStateT (initialState (name startAt))
+  $ fmap fst $ W.runWriterT
   $ do
-    W.runWriterT $ mapM_ setupRoom rooms
+    mapM_ setupRoom rooms
     untilM $ do
-      input <- lift $ getInputLine "> "
-      (quit, msgs) <- W.runWriterT $ case input of
+      input <- lift . lift $ getInputLine "> "
+      (quit, Reset msgs) <- listen $ case input of
         Nothing -> return False
         Just line -> do
           location <- currentLocation
@@ -79,6 +80,7 @@ play item rooms startAt =
           case evalCommandParser parser line of
             Nothing -> showMessage "Unknown command" >> return False
             Just (action, quit) -> action >> return quit
-      mapM_ (lift . outputStrLn) msgs
+      mapM_ (lift . lift . outputStrLn) (fromMaybe [] msgs)
+      clearLog
       return quit
 

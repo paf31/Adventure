@@ -22,6 +22,7 @@ module Game.Adventure.Actions where
 
 import Data.List
 import Data.Maybe
+import Data.Monoid
 import Control.Monad.Trans
 import qualified Data.Map as M
 import qualified Control.Monad.State as S
@@ -32,7 +33,15 @@ import Game.Adventure.Parser
 
 -- Game Monad
 
-type MonadGame item m = (S.MonadState (GameState item) m, W.MonadWriter [String] m)
+newtype Reset w = Reset { runReset :: Maybe w } deriving (Show, Read, Eq, Ord)
+
+instance (Monoid w) => Monoid (Reset w) where
+  mempty = Reset (Just mempty)
+  Reset (Just w1) `mappend` Reset (Just w2) = Reset (Just (w1 `mappend` w2))
+  _ `mappend` r@(Reset (Just _)) = r
+  _ `mappend` _ = mempty
+
+type MonadGame item m = (S.MonadState (GameState item) m, W.MonadWriter (Reset [String]) m)
 
 data Room item = Room
   { name         :: Location
@@ -44,7 +53,10 @@ data Room item = Room
 -- Text
 
 showMessage  :: (MonadGame item m) => String -> m ()
-showMessage = W.tell . return
+showMessage = W.tell . Reset . Just . return
+
+clearLog :: (MonadGame item m) => m ()
+clearLog = W.tell mempty
 
 -- Inventory Functions
 
@@ -60,14 +72,14 @@ with item action = do
   then
     action
   else
-    W.tell ["You do not have '" ++ show item ++ "'."]
+    showMessage $ "You do not have '" ++ show item ++ "'."
 
 without :: (MonadGame item m, Eq item, Show item) => item -> m () -> m ()
 without item action = do
   inInventory <- has item
   if inInventory
   then do
-    W.tell ["You cannot do that if you have '" ++ show item ++ "'."]
+    showMessage $ "You cannot do that if you have '" ++ show item ++ "'."
   else
     action
 
@@ -85,9 +97,9 @@ pickUp item = do
   then do
     addToInventory  item
     removeItemAt location item
-    W.tell ["You now have '" ++ show item ++ "'. "]
+    showMessage $ "You now have '" ++ show item ++ "'. "
   else
-    W.tell ["That item is not here."]
+    showMessage "That item is not here."
 
 putDown :: (MonadGame item m, Eq item, Ord item, Show item) => item -> m ()
 putDown item = do
@@ -95,7 +107,7 @@ putDown item = do
   with item $ do
     removeFromInventory item
     addItemAt location item
-    W.tell ["You put down '" ++ show item ++ "'. "]
+    showMessage $ "You put down '" ++ show item ++ "'. "
 
 pickUpIfNotInInventory :: (MonadGame item m, Ord item, Eq item, Show item) => item -> m ()
 pickUpIfNotInInventory  item = without  item $ pickUp  item
