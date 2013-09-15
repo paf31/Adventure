@@ -120,7 +120,7 @@ addToInventory item = S.modify $ modifyInventory $ (:) item
 removeFromInventory :: (MonadGame item m, Eq item, Show item) => item -> m ()
 removeFromInventory item = S.modify $ modifyInventory $ delete item
 
-look :: (Show item, Ord item, MonadGame item m) => Room item -> m ()
+look :: (Show item, MonadGame item m) => Room item -> m ()
 look room = do
   st <- S.get
   location <- currentLocation
@@ -137,5 +137,5 @@ moveTo = S.modify . setLocation . name
 
 -- Standard Actions
 
-standardCommands :: (Show item, Eq item, Ord item, MonadGame item m) => Room item -> CommandParser item -> CommandParser (m ())
-standardCommands room item = match "look" >> return (look room)
+standardCommands :: (Show item, MonadGame item m) => Room item -> CommandParser (m ())
+standardCommands room = match "look" >> return (look room)

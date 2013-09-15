@@ -92,7 +92,7 @@ play item st =
             room = fromMaybe (error "an unknown location") $ M.lookup location (rooms as)
             parser = msum
               [ (,) <$> (match "quit" >> return (return ())) <*> pure True
-              , (,) <$> standardCommands room item <*> pure False
+              , (,) <$> standardCommands room <*> pure False
               , (,) <$> step room <*> pure False ]
           case evalCommandParser parser line of
             Nothing -> showMessage "Unknown command" >> return False
