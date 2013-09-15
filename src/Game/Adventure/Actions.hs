@@ -28,10 +28,46 @@ import qualified Data.Map as M
 import qualified Control.Monad.State as S
 import qualified Control.Monad.Writer as W
 
-import Game.Adventure.State
 import Game.Adventure.Parser
 
--- Game Monad
+import Control.Arrow ((&&&))
+
+-- State
+
+type Location = String
+
+data GameState item = GameState
+  { inventory       :: [item]
+  , location        :: Location
+  } deriving (Show, Eq)
+
+data Room item = Room
+  { name :: Location
+  , description :: String
+  , runRoom :: (MonadGame item m) => CommandParser (m (Room item)) }
+
+data AllState item = AllState
+  { globalState :: GameState item
+  , rooms :: M.Map Location (Room item) }
+
+initialState :: [Room item] -> Room item -> AllState item
+initialState rooms room = AllState (GameState [] (name room)) (M.fromList (map (name &&& id) rooms))
+
+setInventory :: [item] -> GameState item -> GameState item
+setInventory m st = st { inventory = m }
+
+setLocation :: Location -> GameState item -> GameState item
+setLocation loc st = st { location = loc }
+
+modifyInventory :: ([item] -> [item]) -> GameState item -> GameState item
+modifyInventory f st = st { inventory = f (inventory st) }
+
+-- Rooms
+
+roomState :: Location -> String -> (forall m. (MonadGame item m) => s -> CommandParser (m (s, String))) -> s -> Room item
+roomState loc desc f s = Room loc desc $ fmap (fmap (\(s', desc') -> roomState loc desc' f s')) (f s)
+
+-- Reset Monoid
 
 newtype Reset w = Reset { runReset :: Maybe w } deriving (Show, Read, Eq, Ord)
 
@@ -41,14 +77,9 @@ instance (Monoid w) => Monoid (Reset w) where
   _ `mappend` r@(Reset (Just _)) = r
   _ `mappend` _ = mempty
 
-type MonadGame item m = (S.MonadState (GameState item) m, W.MonadWriter (Reset [String]) m)
+-- Game Monad
 
-data Room item = Room
-  { name         :: Location
-  , initialItems :: [item]
-  , description  :: (MonadGame item m) => m String
-  , step         :: (MonadGame item m) => CommandParser (m ())
-  }
+type MonadGame item m = (Functor m, Monad m, S.MonadState (GameState item) m, W.MonadWriter (Reset [String]) m)
 
 -- Text
 
@@ -89,37 +120,12 @@ addToInventory item = S.modify $ modifyInventory $ (:) item
 removeFromInventory :: (MonadGame item m, Eq item, Show item) => item -> m ()
 removeFromInventory item = S.modify $ modifyInventory $ delete item
 
-pickUp :: (MonadGame item m, Eq item, Ord item, Show item) => item -> m ()
-pickUp item = do
-  location <- currentLocation
-  itemIsHere <- isItemAtLocation location item
-  if itemIsHere
-  then do
-    addToInventory  item
-    removeItemAt location item
-    showMessage $ "You now have '" ++ show item ++ "'. "
-  else
-    showMessage "That item is not here."
-
-putDown :: (MonadGame item m, Eq item, Ord item, Show item) => item -> m ()
-putDown item = do
-  location <- currentLocation
-  with item $ do
-    removeFromInventory item
-    addItemAt location item
-    showMessage $ "You put down '" ++ show item ++ "'. "
-
-pickUpIfNotInInventory :: (MonadGame item m, Ord item, Eq item, Show item) => item -> m ()
-pickUpIfNotInInventory  item = without  item $ pickUp  item
-
 look :: (Show item, Ord item, MonadGame item m) => Room item -> m ()
 look room = do
   st <- S.get
   location <- currentLocation
-  itemsVisible <- itemsAtCurrentLocation
-  description room >>= showMessage
+  showMessage (description room)
   flip mapM_ (inventory st) $ \item -> showMessage $ "You have '" ++ show item ++ "'."
-  flip mapM_ itemsVisible $ \item -> showMessage $ "You can see '" ++ show item ++ "'."
 
 -- Player Location
 
@@ -128,20 +134,3 @@ currentLocation = S.get >>= return . location
 
 moveTo :: (MonadGame item m) => Room item -> m ()
 moveTo = S.modify . setLocation . name
-
--- Item Locations
-
-isItemAtLocation :: (MonadGame item m, Eq item) => Location -> item -> m Bool
-isItemAtLocation location item = S.get >>= return . maybe False (elem item) . M.lookup location . items
-
-itemsAtCurrentLocation :: (MonadGame item m, Ord item) => m [item]
-itemsAtCurrentLocation = do
-  location <- currentLocation
-  st <- S.get
-  return $ maybe [] id . M.lookup location . items $ st
-
-addItemAt :: (MonadGame item m, Ord item) => Location -> item -> m ()
-addItemAt location item = S.modify $ modifyItems $ M.alter (maybe (Just [item]) $ Just . insert item) location
-
-removeItemAt :: (MonadGame item m, Ord item) => Location -> item -> m ()
-removeItemAt location item = S.modify $ modifyItems $ M.adjust (delete item) location

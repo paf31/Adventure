@@ -22,6 +22,8 @@ import Data.Monoid
 import Control.Monad
 import Control.Applicative
 
+import Control.Arrow ((&&&))
+
 import Game.Adventure
 
 data Lit = Lit | Unlit deriving (Show, Eq, Ord)
@@ -43,25 +45,19 @@ item = matchAny [ ("Matches", Matches), ("Bucket", Bucket Empty), ("Firewood", F
 -- Example Game
 
 kitchen :: Room Item
-kitchen = Room "kitchen" [Matches, Firewood Unlit] description $ msum
+kitchen = standardRoom "kitchen" "You are in a dimly lit room." item (\_ -> msum
   [ match "light" >> (match "fire" <|> match "wood" <|> match "firewood" <|> match "matches") >> return (do
       with Matches $ with (Firewood Unlit) $ do
         showMessage "You light the firewood with the matches."
         removeFromInventory Matches
         removeFromInventory (Firewood Unlit)
-        addToInventory (Firewood Lit))
-  , match "move" >> match "north" >> return (moveTo courtyard)
-  ]
-  where
-  description :: (MonadGame Item m) => m String
-  description = do
-    lit <- has (Firewood Lit)
-    if lit
-    then return "You are in the kitchen. You see a courtyard to the north."
-    else return "You are in a dimly lit room."
+        addToInventory (Firewood Lit)
+        setRoomDescription "You are in the kitchen. You see a courtyard to the north.")
+  , match "move" >> match "north" >> return (moveTo courtyard) ]
+  ) [Matches, Firewood Unlit] ()
 
 courtyard :: Room Item
-courtyard = Room "courtyard" [Bucket Empty] (return "You are in a courtyard with a fountain.") $ msum
+courtyard = standardRoom "courtyard" "You are in a courtyard with a fountain." item (\_ -> msum
   [ match "fill" >> match "Bucket" >> return (do
       with (Bucket Empty) $ do
         showMessage "You fill the bucket at the fountain"
@@ -72,8 +68,8 @@ courtyard = Room "courtyard" [Bucket Empty] (return "You are in a courtyard with
         showMessage "You extinguish the flames."
         removeFromInventory (Bucket Full)
         removeFromInventory (Firewood Lit))
-  , match "move" >> match "south" >> return (moveTo kitchen)
-  ]
+  , match "move" >> match "south" >> return (moveTo kitchen) ]
+  ) [Bucket Empty] ()
 
 main :: IO ()
-main = play item [kitchen, courtyard] kitchen
+main = play item (initialState [kitchen, courtyard] kitchen)
