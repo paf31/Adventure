@@ -47,7 +47,7 @@ item = matchAny [ ("Matches", Matches), ("Bucket", Bucket Empty), ("Firewood", F
 kitchen :: Room Item
 kitchen = standardRoom "kitchen" "You are in a dimly lit room." item (\_ -> msum
   [ match "light" >> (match "fire" <|> match "wood" <|> match "firewood" <|> match "matches") >> return (do
-      with Matches $ with (Firewood Unlit) $ do
+      fmap (const ()) $ with Matches $ with (Firewood Unlit) $ do
         showMessage "You light the firewood with the matches."
         removeFromInventory Matches
         removeFromInventory (Firewood Unlit)
@@ -59,12 +59,12 @@ kitchen = standardRoom "kitchen" "You are in a dimly lit room." item (\_ -> msum
 courtyard :: Room Item
 courtyard = standardRoom "courtyard" "You are in a courtyard with a fountain." item (\_ -> msum
   [ match "fill" >> match "Bucket" >> return (do
-      with (Bucket Empty) $ do
+      fmap (const ()) $ with (Bucket Empty) $ do
         showMessage "You fill the bucket at the fountain"
         removeFromInventory (Bucket Empty)
         addToInventory (Bucket Full))
   , match "use" >> match "Bucket" >> return (do
-      with (Bucket Full) $ with (Firewood Lit) $ do
+      fmap (const ()) $ with (Bucket Full) $ with (Firewood Lit) $ do
         showMessage "You extinguish the flames."
         removeFromInventory (Bucket Full)
         removeFromInventory (Firewood Lit))

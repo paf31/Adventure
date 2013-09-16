@@ -24,6 +24,8 @@ module Game.Adventure.Room (
 
   standardRoom,
 
+  R,
+
   setRoomDescription,
   addToRoom,
   removeFromRoom,

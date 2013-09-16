@@ -96,23 +96,25 @@ has item = do
   inv <- S.get >>= return . inventory
   return $ item `elem` inv
 
-with :: (MonadGame item m, Eq item, Show item) => item -> m () -> m ()
+with :: (MonadGame item m, Eq item, Show item) => item -> m a -> m (Maybe a)
 with item action = do
   inInventory <- has item
   if inInventory
   then
-    action
-  else
+    fmap Just action
+  else do
     showMessage $ "You do not have '" ++ show item ++ "'."
+    return Nothing
 
-without :: (MonadGame item m, Eq item, Show item) => item -> m () -> m ()
+without :: (MonadGame item m, Eq item, Show item) => item -> m a -> m (Maybe a)
 without item action = do
   inInventory <- has item
   if inInventory
   then do
     showMessage $ "You cannot do that if you have '" ++ show item ++ "'."
+    return Nothing
   else
-    action
+    fmap Just action
 
 addToInventory :: (MonadGame item m, Eq item, Show item) => item -> m ()
 addToInventory item = S.modify $ modifyInventory $ (:) item
