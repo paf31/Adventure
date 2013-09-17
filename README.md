@@ -128,15 +128,38 @@ Effectful computations run in a monad which is made up of a *stack* of monad tra
 
 To run a computation, we need to peel off each effectful layer in the reverse order:
 
-- `runStateT`
-- `runWriterT`
+- `runStateT`, `execStateT`, `evalStateT`
+- `runWriterT`,  
 - `runReaderT`
 - `runErrorT`
 
 ** Example **
 
 ~~~{.haskell}
+data Log
+data MyState
+data Config
 
+newtype MyStack a = MyStack { runMyStack :: StateT MyState (WriterT Log (ReaderT Config IO)) a } 
+  deriving (Functor, Monad, MonadState MyState, MonadWriter Log, MonadReader Config, MonadIO)
+
+main :: IO ()
+main = do
+  config <- loadConfigFromFile
+  (_, log) <- runReaderT config
+              . runWriterT
+              . evalStateT initialState
+              . runMyStack
+              $ app
+  print log
+
+app :: IO ()
+app = do tell $ Log "Starting..."
+         config <- ask
+         tell $ Log $ "Read config: " ++ show config
+         anotherAction
+         newState <- get
+         liftIO $ print newState
 ~~~
 
 ## Lifting Actions
