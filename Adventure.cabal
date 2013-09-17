@@ -17,6 +17,7 @@ executable Adventure
     main-is: Main.hs
     buildable: True
     hs-source-dirs: src
-    other-modules: Game.Adventure.SinglePlayer Game.Adventure.Room
+    other-modules: Game.Adventure.Slides Game.Adventure.Typed
+                   Game.Adventure.SinglePlayer Game.Adventure.Room
                    Game.Adventure.Actions Game.Adventure.Parser Game.Adventure
  
