@@ -43,6 +43,12 @@ The function we need is not `(.)` but `<=<` from `Control.Monad`:
 
 `<=<` is defined in terms of the operator bind `>>=`, which together with the function `return` make up the `Monad` typeclass.
 
+~~~{.haskell}
+(>>=) :: Monad m => m a -> (a -> m b) -> m b
+
+f <=< g a = g a >>= f
+~~~
+
 Any type constructor which is an instance of `Monad` can be used together with **do notation** to provide syntactic sugar for `>>=`:
 
 ~~~{.haskell}
@@ -79,6 +85,12 @@ fooBarBaz xml = do foo <- findChild "foo" xml
 
 A slight generalization of Monad: if we want to enable effectful function application, we can use `Applicative`
 
+~~~{.haskell}
+(<*>) :: Applicative f => f (a -> b) -> f a -> f b
+~~~
+
+Compare this type signature with the type of `>>=`.
+
 `<*>` does not provide access to the wrapped data like `>>=` does, so function arguments must be independent.
 
 **XML Example**
@@ -109,6 +121,19 @@ Some others
 - `ST` - pure state threads 
 - `Free` - free models of algebraic theories
 
+## An Example - State
+
+~~~{.haskell}
+newtype State s a = State { runState :: s -> (a, s) }
+
+instance Functor (State s) where
+  fmap f st = State $ (f *** id) . runState st
+  
+instance Monad (State s) where
+  return a = (const a &&& id) . State
+  fmap f st = State $ \s -> let (a, s') = runState st s in runState (f a) s'
+~~~
+
 ## Composing Monads
 
 If `m` is a monad tracking events of a certain type, and `n` is another monad tracking events of another type, it seems reasonable that the composition `Both a = m (n a)` might track both types of effects, but `Both` is not an instance of `Monad` in general.
@@ -116,6 +141,12 @@ If `m` is a monad tracking events of a certain type, and `n` is another monad tr
 `mtl` is a library of monads which compose well with one another, made possible using typeclasses.
 
 Monads which behave nicely under composition have instances of `MonadTrans` - they are *monad transformers*.
+
+For example, compare `State` above, with its transformer equivalent `StateT`:
+
+~~~{.haskell}
+newtype StateT s m a = StateT { runStateT :: s -> m (a, s) }
+~~~
 
 Effectful computations run in a monad which is made up of a *stack* of monad transformers.
 
