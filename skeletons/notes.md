@@ -21,9 +21,39 @@ Rooms are evolving processes.
 
 No externally accessible state.
 
-Player is a process whose state is inventory and a bunch of references to rooms.
+Each room defined separately with its own actions.
 
-Types
-----
+An action produces some output and the next room to be in. 
 
+*Actions are the only things with access to room state.*
+
+
+#### Rooms
+
+~~~{.haskell}
+type Result = (GameState, RoomName, Output)
+
+data GameState = GameState {inventory :: Inventory, roomMap :: [(RoomName, Room)]}
+
+type RoomFun = GameState -> Input -> Result
+data Room = Room {
+      roomName :: RoomName
+    , inRoom :: RoomFun
+    , description :: String
+    }
+~~~
+
+#### The Player
+
+~~~{.haskell}
+player :: (GameState, RoomName, Output) -> IO ()
+player (gs, roomNm, output) = do
+    unless (null output) $ putStrLn output
+    putStr "> "
+    inp <- words <$> getLine
+    if inp == ["quit"]  
+      then return () 
+      else player $ inRoom room gs inp 
+  where room = fromMaybe (error $ "unknown room: "++roomNm) . lookup roomNm $ roomMap gs
+~~~
 
