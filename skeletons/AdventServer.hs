@@ -20,7 +20,6 @@ traceMsgIt msg x = trace ("\n"++msg++show x) x
 type GameObject = String
 type RoomName = String
 type PlayerId = String
---data Input = UserInp [String] | ExitInp PlayerId | EnterInp PlayerId
 type Input = [String] 
 type Output = String
 type RoomState = [GameObject]
