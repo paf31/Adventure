@@ -164,13 +164,56 @@ lounge = Room{ roomName = "lounge"
              }
 ~~~
 
-So Far...
-----
+Adding More Players
+---
 
+### So Far
 We have a simple adventure game engine. 
 
 Rooms are independent processes with their own state.
 
 The player wanders around from room to room, altering a room's state as well as her own state.
 
-*What about adding more players?*
+*It should be easy to add more players.*
+
+### Software Transactional Memory
+
+Could use explicit mutable refs with locking (MVars) to ensure rooms are atomically updated.
+
+But we can do even better with STM.
+* STM computations are not committed if underlying memory changed.
+
+Can allow multiple players with exact same architecture and minimal syntactic change.
+
+### Previous Types
+~~~{.haskell}
+type Result = (GameState, RoomName, Output)
+
+type Action = RoomState -> GameState -> Input -> First Result
+
+data GameState = GameState {inventory :: Inventory, roomMap :: [(RoomName, Room)]}
+
+type RoomFun = GameState -> Input -> Result
+data Room = Room {
+      roomName :: RoomName
+    , inRoom :: RoomFun
+    , description :: String
+    }
+~~~
+
+### Types for Multplie Players
+~~~{.haskell}
+type Result = STM (GameState, TVar Room, Output)
+
+type Action = RoomState -> GameState -> Input -> First Result
+
+data GameState = GameState {inventory :: Inventory, playerId :: PlayerId} 
+
+type RoomFun = GameState -> Input -> Result
+data Room = Room {
+      roomName :: RoomName
+    , inRoom' :: RoomFun
+    , description :: String
+    }
+~~~
+
