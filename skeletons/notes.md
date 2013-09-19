@@ -127,4 +127,50 @@ Now define some common actions.
         _ -> Nothing
 ~~~
 
+### Some Other Actions
 
+Move from current room to another room. 
+
+Note we return the result of passing the new room the input ["look"].
+
+~~~{.haskell}
+move :: String -> RoomName -> Action
+move dir roomNm _st gs ["move", dir'] | dir == dir' = 
+    First . Just . (\r -> inRoom r gs ["look"]) . 
+    fromMaybe (error $ "internal error: missing " ++ roomNm) . lookup roomNm $ 
+    roomMap gs
+move _ _ _ _ _ = First Nothing
+~~~
+
+Require an object to be in inventory in order to perform an action.
+
+~~~{.haskell}
+requireInv :: GameObject -> Action -> Action
+requireInv obj act st gs | obj `elem` inventory gs = act st gs
+                         | otherwise = \_ -> First Nothing
+~~~
+
+### An Actual Room
+
+~~~{.haskell}
+aud = Room{ roomName = "auditorium"
+          , description = "A room full of people."
+          , inRoom = genericRoom aud [move "north" $ roomName lounge] ["table"]
+          }
+
+lounge = Room{ roomName = "lounge"
+             , description = "A room with a view."
+             , inRoom = genericRoom lounge [move "south" $ roomName aud] ["computer", "disk"]
+             }
+~~~
+
+So Far...
+----
+
+We have a simple adventure game engine. 
+
+Rooms are independent processes with their own state.
+
+The player wanders around from room to room, altering a room's state as well as her own state.
+
+*What about adding more players?*
