@@ -17,13 +17,18 @@ import Debug.Trace
 
 traceMsgIt msg x = trace ("\n"++msg++show x) x
 
-type GameObject = String
+type ThingId = String
+--type GameObject = String
+data GameObject = Person PlayerId | Thing ThingId deriving (Eq)
+instance Show GameObject where 
+    show (Person pid) = pid
+    show (Thing obj) = obj
 type RoomName = String
 type PlayerId = String
 type Input = [String] 
 type Output = String
 type RoomState = [GameObject]
-type Inventory = [GameObject]
+type Inventory = [ThingId]
 
 -- result is (new inventory, updated old room, output, new room)
 type Result = STM (GameState, TVar Room, Output)
@@ -50,7 +55,7 @@ requireRm obj act st | obj `elem` st = act st
                      | otherwise = \_ _ -> First Nothing
 
 -- require an object to be in inventory in order to do something.
-requireInv :: GameObject -> Action -> Action
+requireInv :: ThingId -> Action -> Action
 requireInv obj act st gs | obj `elem` inventory gs = act st gs
                          | otherwise = \_ -> First Nothing
 
@@ -69,14 +74,14 @@ genericRoom roomTV acts st gs inp = do
         room' st = room{inRoom' = genericRoom roomTV acts st}
         commonAction st gs inp = First $ case inp of 
 
-            ["get", obj] | obj `elem` st -> Just $ do 
-                               writeTVar roomTV $ room' (delete obj st)
+            ["get", obj] | Thing obj `elem` st -> Just $ do 
+                               writeTVar roomTV $ room' (delete (Thing obj) st)
                                let gs' = gs{ inventory = obj : inventory gs}
                                return (gs', roomTV, "You got it.")
-                         | otherwise -> Just $ return (gs, roomTV, "There is no " ++ obj ++ " here.") 
+                         | otherwise -> Just $ return (gs, roomTV, "There is no object " ++ obj ++ " here.") 
 
             ["put", obj] | obj `elem` inventory gs -> Just $ do 
-                               writeTVar roomTV $ room' (obj : st)
+                               writeTVar roomTV $ room' (Thing obj : st)
                                let gs' = gs{ inventory = delete obj (inventory gs)}
                                return (gs', roomTV, "You put it.")
                          | otherwise -> Just $ return (gs, roomTV, "You don't have " ++ obj ++ ".") 
@@ -84,19 +89,19 @@ genericRoom roomTV acts st gs inp = do
             -- These two are hacks since each element of user input can't have a space.
             -- But it would be easy enough to change Input type to have internal and external input.
             [enter] | ["enter", nm] <- words enter -> Just $ do
-                          writeTVar roomTV $ room' (nm : st)
+                          writeTVar roomTV $ room' (Person nm : st)
                           return (gs, roomTV, "")
             
             [exit] | ["exit", nm] <- words exit -> Just $ do
-                          writeTVar roomTV $ room' (delete nm st)
+                          writeTVar roomTV $ room' (delete (Person nm) st)
                           return (gs, roomTV, "")
                      
             ["look"] -> Just $ return (gs, roomTV, out)
                 where out = description room ++ "\n" ++ 
-                            (unlines . map (("You see " ++) . (++ " here.")) . filter (/= playerId gs) $ st)
+                            (unlines . map (("You see " ++) . (++ " here.") . show) . filter (/= Person (playerId gs)) $ st)
                   
             ["inventory"] -> Just $ return (gs, roomTV, out) 
-                where out = unlines . map (("You have " ++) . (++ ".")) $ inventory gs
+                where out = unlines . map (("You have " ++) . (++ ".") . show) $ inventory gs
 
             _ -> Nothing
 
@@ -124,7 +129,7 @@ myMain = mdo
       roomTV <- newTVarIO room
       let room = Room{ roomName = "lounge"
                      , description = "A room with a view."
-                     , inRoom' = genericRoom roomTV [move "south" aud, requireInv "disk_a" playGame] ["computer", "disk_a", "disk_z"]
+                     , inRoom' = genericRoom roomTV [move "south" aud, requireInv "disk_a" playGame] $ map Thing ["computer", "disk_a", "disk_z"]
                      }
           playGame st gs inp = First $ case inp of
             ["use", "disk_a"] -> Just $ return (gs{inventory = delete "disk_a" (inventory gs)}, advent, "Something strange happened...")
@@ -135,7 +140,7 @@ myMain = mdo
       roomTV <- newTVarIO room
       let room = Room{ roomName = "auditorium"
                      , description = "A room full of people."
-                     , inRoom' = genericRoom roomTV [move "north" lounge] ["table"]
+                     , inRoom' = genericRoom roomTV [move "north" lounge] [Thing "table"]
                      }
       return roomTV
 
