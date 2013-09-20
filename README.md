@@ -39,6 +39,10 @@ The function we need is not `(.)` but `<=<` from `Control.Monad`:
 
 `<=<` handles the composition of effects, for some effect tracked by a monad `m`.
 
+*Intuition 1*: Functions of type `a -> m b` are like functions of type `a -> b` but with side effects tracked by `m`.
+*Intuition 2*: `return` embeds pure functions into a larger functional language supporting effects tracked by `m`.
+*Intuition 3*: `<=<` is just normal function composition in this larger language.
+
 ## Monads Enable Do-Notation
 
 `<=<` is defined in terms of the operator bind `>>=`, which together with the function `return` make up the `Monad` typeclass.
@@ -75,7 +79,7 @@ But `>>=`, `>=>` and `return` are polymorphic - they work for any `Monad m`!
 data File
 
 fooBarBaz :: File -> IO File
-fooBarBaz xml = do foo <- findChild "foo" xml
+fooBarBaz dir = do foo <- findChild "foo" dir
                    bar <- findChild "bar" foo
                    baz <- findChild "baz" bar
                    return bar
@@ -125,13 +129,19 @@ Some others
 
 ~~~{.haskell}
 newtype State s a = State { runState :: s -> (a, s) }
+~~~
 
+"A value of type `State s a` is a function which takes an initial state and returns a value of type `a` and a new state."
+
+~~~{.haskell}
 instance Functor (State s) where
-  fmap f st = State $ (f *** id) . runState st
+  fmap f st = State $ \s -> let (a, s') = runState st s
+                                       in (f a, s')
   
 instance Monad (State s) where
-  return a = (const a &&& id) . State
-  fmap f st = State $ \s -> let (a, s') = runState st s in runState (f a) s'
+  return a = State $ \s -> (a, s)
+  fmap f st = State $ \s -> let (a, s') = runState st s 
+                                       in runState (f a) s'
 ~~~
 
 ## Composing Monads
