@@ -3,25 +3,27 @@ Adventure Game Engine
 
 Design and development of a toy engine in Haskell.
 
-Introduction and example of higher-order functions, laziness, and types.
+* Introduction and example of higher-order functions, laziness, and types.
+
+* Brief demonstration os STM.
 
 Imperative Design
 ----
 
-Big state machine with one big global state.
+* Big state machine with one big global state.
 
-Simple.
+* Simple.
 
-Doesn't match logical situation-- no isolation of logically separate room states.
+* Doesn't match logical situation-- no isolation of logically separate room states.
 
 Functional Design
 ----
 
-Rooms are evolving processes.
+* Rooms are evolving processes.
 
-No externally accessible state.
+* No externally accessible state.
 
-Each room defined separately with its own actions.
+* Each room defined separately with its own actions.
 
 
 ### Rooms 
@@ -201,7 +203,7 @@ data Room = Room {
     }
 ~~~
 
-### Types for Multplie Players
+### Types for Multiple Players
 ~~~{.haskell}
 type Result = STM (GameState, TVar Room, Output)
 
@@ -215,5 +217,80 @@ data Room = Room {
     , inRoom' :: RoomFun
     , description :: String
     }
+~~~
+
+Useful convenience function:
+~~~{.haskell}
+inRoom :: TVar Room -> RoomFun
+inRoom roomTV gs inp = do 
+    room <- readTVar roomTV 
+    inRoom' room gs inp
+~~~
+
+### Previous Generic Room
+~~~{.haskell}
+genericRoom room acts st gs = 
+    fromMaybe (gs, roomNm, "You can't do that now.") . 
+    getFirst . 
+    mconcat (acts ++ [commonAction]) st gs
+where 
+    room' st = room{inRoom = genericRoom room acts st}
+    roomNm = roomName room
+
+    commonAction st gs inp = First $ case inp of 
+
+        ["get", obj] | obj `elem` st -> Just (gs', roomNm, "You got it.")
+                     | otherwise -> Just (gs, roomNm, "There is no " ++ obj ++ " here.") 
+            where gs' = gs{ inventory = obj : inventory gs
+                          , roomMap = (roomNm, room' $ delete obj st) : roomMap gs
+                          }
+
+        ["inventory"] -> Just (gs, roomNm, out) 
+            where out = unlines . map (("You have " ++) . (++ ".")) $ inventory gs
+                     
+        _ -> Nothing
+~~~
+
+### Generic Room for Multiple Players
+~~~{.haskell}
+genericRoom :: TVar Room -> [Action] -> RoomState -> GameState -> Input -> Result
+genericRoom roomTV acts st gs inp = do
+    room <- readTVar roomTV
+    let 
+        room' st = room{inRoom' = genericRoom roomTV acts st}
+        commonAction st gs inp = First $ case inp of 
+
+            ["get", obj] | Thing obj `elem` st -> Just $ do 
+                               writeTVar roomTV $ room' (delete (Thing obj) st)
+                               let gs' = gs{ inventory = obj : inventory gs}
+                               return (gs', roomTV, "You got it.")
+                         | otherwise -> Just $ return (gs, roomTV, "There is no object " ++ obj ++ " here.") 
+
+            ["inventory"] -> Just $ return (gs, roomTV, out) 
+                where out = unlines . map (("You have " ++) . (++ ".") . show) $ inventory gs
+
+            _ -> Nothing
+
+    fromMaybe (return (gs, roomTV, "You can't do that now.")) . getFirst $ 
+      mconcat (acts ++ [commonAction]) st gs inp
+~~~
+
+Distinguish between things and players so that you can't get and put another player.
+
+### Players
+
+~~~{.haskell}
+data Player = Player {play :: Input -> STM (Output, Player)}
+
+type Players = [(PlayerId, Player)]
+
+-- Uses a bit of a hack to get the players into and out of the room states.
+playerFn :: PlayerId -> GameState -> TVar Room -> Player
+playerFn name gs roomTV = Player $ \inp -> do
+    let gs0 = gs{playerId = name}
+    (gs1, newRoomTV, out) <- inRoom roomTV gs0 inp 
+    (gs2, _, _) <- inRoom roomTV gs1 ["exit "++name]
+    (gs', _, _) <- inRoom newRoomTV gs2 ["enter "++name]
+    return (out, playerFn name gs' newRoomTV) 
 ~~~
 
