@@ -92,15 +92,14 @@ genericRoom room acts st gs =
 -- example rooms
 aud = Room{ roomName = "auditorium"
           , description = "A room full of people."
-          , inRoom = inrm ["table"]
+          , inRoom = genericRoom aud [move "north" $ roomName lounge] ["table"]
           }
-  where inrm = genericRoom aud [move "north" $ roomName lounge] 
 
 lounge = Room{ roomName = "lounge"
              , description = "A room with a view."
-             , inRoom = inrm ["computer", "disk_a", "disk_z"]
+             , inRoom = genericRoom lounge myActs ["computer", "disk_a", "disk_z"]
              }
-  where inrm = genericRoom lounge [move "south" $ roomName aud, requireInv "disk_a" playGame]
+  where myActs = [move "south" $ roomName aud, requireInv "disk_a" playGame]
         playGame st gs inp = First $ case inp of
             ["use", "disk_a"] -> Just (gs{inventory = delete "disk_a" (inventory gs)}, "advent", "Something strange happened...")
             _ -> Nothing
