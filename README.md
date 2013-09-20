@@ -174,7 +174,7 @@ To run a computation, we need to peel off each effectful layer in the reverse or
 - `runReaderT`
 - `runErrorT`
 
-** Example **
+**Example**
 
 ~~~{.haskell}
 data Log
