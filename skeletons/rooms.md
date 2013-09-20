@@ -13,7 +13,10 @@ lounge = Room{ roomName = "lounge"
     myActs = [move "south" $ roomName aud, requireInv "disk_a" playGame]
     playGame st gs inp = First $ 
       case inp of
-        ["use", "disk_a"] -> Just (gs{inventory = delete "disk_a" (inventory gs)}, "advent", "Something strange happened...")
+        ["use", "disk_a"] -> Just ( gs{inventory = delete "disk_a" (inventory gs)}
+                                  , "advent" 
+                                  , "Something strange happened..."
+                                  )
         _ -> Nothing
 
 
